@@ -15,8 +15,13 @@ import {
   Plus,
   Trash2,
   UserPlus,
-  Wand2
+  Wand2,
+  Pencil,
+  Upload,
+  FileSpreadsheet,
+  Check
 } from 'lucide-react';
+import { exportTheoDoiTT27ToExcel } from '../utils/excel_exporter';
 import {
   StudentTT27Record,
   SubjectEvaluation,
@@ -40,6 +45,7 @@ interface TheoDoiTT27ModuleProps {
   onAddRecord: (newRecord: StudentTT27Record) => void;
   onDeleteRecord: (recordId: string) => void;
   onOpenMonthlyReport: () => void;
+  onOpenAiTemplateImport?: () => void;
 }
 
 export const TheoDoiTT27Module: React.FC<TheoDoiTT27ModuleProps> = ({
@@ -49,12 +55,14 @@ export const TheoDoiTT27Module: React.FC<TheoDoiTT27ModuleProps> = ({
   onUpdateRecord,
   onAddRecord,
   onDeleteRecord,
-  onOpenMonthlyReport
+  onOpenMonthlyReport,
+  onOpenAiTemplateImport
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedTerm, setSelectedTerm] = useState<StudentTT27Record['term']>('GIUA_HK1');
   const [selectedStanding, setSelectedStanding] = useState<string>('ALL');
   const [activeRecordId, setActiveRecordId] = useState<string | null>(records[0]?.id || null);
+  const [editingStudentRecord, setEditingStudentRecord] = useState<StudentTT27Record | null>(null);
 
   // Add Student Modal State
   const [showAddStudentModal, setShowAddStudentModal] = useState<boolean>(false);
@@ -390,21 +398,44 @@ export const TheoDoiTT27Module: React.FC<TheoDoiTT27ModuleProps> = ({
                 Đồng Bộ Từ Sổ Chủ Nhiệm ({students.length})
               </button>
             )}
+
+            {onOpenAiTemplateImport && (
+              <button
+                type="button"
+                onClick={onOpenAiTemplateImport}
+                className="px-3.5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                title="Tải lên bảng điểm và danh sách đánh giá từ file Excel/Word bằng AI"
+              >
+                <Upload className="w-4 h-4" />
+                Tải Lên File (AI)
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => exportTheoDoiTT27ToExcel(records, currentUser.className || '4/1', selectedTerm)}
+              className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              title="Xuất bảng đánh giá học sinh Thông tư 27 ra file Excel chuẩn"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Tải Xuống Excel
+            </button>
+
             <button
               type="button"
               onClick={() => setShowAddStudentModal(true)}
               className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              Thêm Học Sinh Đánh Giá
+              Thêm Học Sinh
             </button>
             <button
               type="button"
               onClick={onOpenMonthlyReport}
-              className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
-              <Download className="w-4 h-4" />
-              Xuất Báo Cáo Tổng Kết Tháng (PDF)
+              <Download className="w-4 h-4 text-amber-300" />
+              Báo Cáo PDF
             </button>
           </div>
         </div>
@@ -571,6 +602,15 @@ export const TheoDoiTT27Module: React.FC<TheoDoiTT27ModuleProps> = ({
                         <span className="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">
                           {activeRecord.className}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingStudentRecord(activeRecord)}
+                          className="px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1 border border-blue-200 transition-colors cursor-pointer"
+                          title="Chỉnh sửa thông tin học sinh và danh hiệu"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          <span>Sửa</span>
+                        </button>
                       </h3>
                       <p className="text-xs text-slate-500 mt-0.5">
                         Đơn vị: <strong className="text-slate-800">{currentUser.schoolName}</strong> • Năm học {currentUser.schoolYear || '2024 - 2025'}
@@ -1083,6 +1123,203 @@ export const TheoDoiTT27Module: React.FC<TheoDoiTT27ModuleProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Chỉnh Sửa Hồ Sơ & Danh Hiệu TT27 */}
+      {editingStudentRecord && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-blue-600" />
+                Chỉnh Sửa Hồ Sơ & Đánh Giá Tổng Hợp TT27
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingStudentRecord(null)}
+                className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onUpdateRecord(editingStudentRecord);
+                setStatusMessage(
+                  `Đã cập nhật thành công hồ sơ đánh giá Thông tư 27 cho em "${editingStudentRecord.studentName}".`
+                );
+                setEditingStudentRecord(null);
+              }}
+              className="space-y-3.5 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Họ và tên học sinh</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingStudentRecord.studentName}
+                    onChange={(e) =>
+                      setEditingStudentRecord({
+                        ...editingStudentRecord,
+                        studentName: e.target.value
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Lớp</label>
+                  <input
+                    type="text"
+                    value={editingStudentRecord.className}
+                    onChange={(e) =>
+                      setEditingStudentRecord({
+                        ...editingStudentRecord,
+                        className: e.target.value
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Kỳ đánh giá</label>
+                  <select
+                    value={editingStudentRecord.term}
+                    onChange={(e) =>
+                      setEditingStudentRecord({
+                        ...editingStudentRecord,
+                        term: e.target.value as StudentTT27Record['term']
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  >
+                    <option value="GIUA_HK1">Giữa Học kỳ 1</option>
+                    <option value="CUOI_HK1">Cuối Học kỳ 1</option>
+                    <option value="GIUA_HK2">Giữa Học kỳ 2</option>
+                    <option value="CUOI_NAM">Cuối Năm Học</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Xếp loại khen thưởng (Điều 13)
+                  </label>
+                  <select
+                    value={editingStudentRecord.finalAward}
+                    onChange={(e) =>
+                      setEditingStudentRecord({
+                        ...editingStudentRecord,
+                        finalAward: e.target.value as StudentTT27Record['finalAward']
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-amber-700"
+                  >
+                    <option value="XUAT_SAC">Học sinh Xuất sắc</option>
+                    <option value="TIEU_BIEU">Học sinh Tiêu biểu</option>
+                    <option value="HOAN_THANH">Hoàn thành</option>
+                    <option value="CHUA_HOAN_THANH">Cần hỗ trợ đặc biệt (Chưa HT)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Nhận xét tổng quát của giáo viên chủ nhiệm
+                </label>
+                <textarea
+                  rows={3}
+                  value={editingStudentRecord.teacherGeneralComment || ''}
+                  onChange={(e) =>
+                    setEditingStudentRecord({
+                      ...editingStudentRecord,
+                      teacherGeneralComment: e.target.value
+                    })
+                  }
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl leading-relaxed"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-950">Phát hiện & Kế hoạch hỗ trợ đặc biệt:</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-amber-900">
+                    <input
+                      type="checkbox"
+                      checked={editingStudentRecord.specialSupportNeeded || false}
+                      onChange={(e) =>
+                        setEditingStudentRecord({
+                          ...editingStudentRecord,
+                          specialSupportNeeded: e.target.checked
+                        })
+                      }
+                      className="rounded text-amber-600 focus:ring-amber-500"
+                    />
+                    Cần hỗ trợ đặc biệt
+                  </label>
+                </div>
+
+                {editingStudentRecord.specialSupportNeeded && (
+                  <div className="space-y-2 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-bold text-amber-900 mb-0.5">
+                        Nhóm cần can thiệp (VD: Toán - phân số, Đọc hiểu, Nề nếp)
+                      </label>
+                      <input
+                        type="text"
+                        value={editingStudentRecord.specialSupportCategory || ''}
+                        onChange={(e) =>
+                          setEditingStudentRecord({
+                            ...editingStudentRecord,
+                            specialSupportCategory: e.target.value
+                          })
+                        }
+                        className="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-amber-900 mb-0.5">
+                        Kế hoạch bồi dưỡng / phụ đạo
+                      </label>
+                      <input
+                        type="text"
+                        value={editingStudentRecord.specialSupportPlan || ''}
+                        onChange={(e) =>
+                          setEditingStudentRecord({
+                            ...editingStudentRecord,
+                            specialSupportPlan: e.target.value
+                          })
+                        }
+                        className="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingStudentRecord(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  Lưu Thay Đổi
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -16,8 +16,13 @@ import {
   RefreshCw,
   FolderDown,
   Ban,
-  Repeat
+  Repeat,
+  Pencil,
+  Upload,
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
+import { exportSoDauBaiToExcel } from '../utils/excel_exporter';
 import { LessonRecord, UserProfile } from '../types/edtech';
 import { generateDigitalSignature } from '../utils/edtech_logic';
 
@@ -28,6 +33,7 @@ interface SoDauBaiModuleProps {
   onAddLesson: (newLesson: LessonRecord) => void;
   onDeleteLesson: (lessonId: string) => void;
   onOpenMonthlyReport: () => void;
+  onOpenAiTemplateImport?: () => void;
 }
 
 const HOMEROOM_TEACHERS: Record<string, string> = {
@@ -43,11 +49,13 @@ export const SoDauBaiModule: React.FC<SoDauBaiModuleProps> = ({
   onUpdateLesson,
   onAddLesson,
   onDeleteLesson,
-  onOpenMonthlyReport
+  onOpenMonthlyReport,
+  onOpenAiTemplateImport
 }) => {
   const [selectedClass, setSelectedClass] = useState<string>('4/1');
   const [weekNumber, setWeekNumber] = useState<number>(currentUser.currentWeek || 9);
   const [signingModalLesson, setSigningModalLesson] = useState<LessonRecord | null>(null);
+  const [editingLesson, setEditingLesson] = useState<LessonRecord | null>(null);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [showPrintPreview, setShowPrintPreview] = useState<boolean>(false);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
@@ -349,15 +357,26 @@ export const SoDauBaiModule: React.FC<SoDauBaiModuleProps> = ({
               <span>Ghi tiết mới</span>
             </button>
 
+            {onOpenAiTemplateImport && (
+              <button
+                type="button"
+                onClick={onOpenAiTemplateImport}
+                className="px-3 py-1.5 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Tải lên Sổ đầu bài, Kế hoạch dạy học từ file Word/Excel bằng AI"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Tải Lên File (AI)</span>
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() =>
-                setStatusBanner(`Đã đồng bộ dữ liệu Sổ đầu bài Lớp ${selectedClass} (Tuần ${weekNumber}).`)
-              }
-              className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              onClick={() => exportSoDauBaiToExcel(displayedLessons, weekNumber, selectedClass)}
+              className="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              title="Tải Sổ đầu bài điện tử ra file Excel chuẩn Thông tư 28"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-              <span>Làm mới</span>
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Tải Xuống Excel</span>
             </button>
 
             <button
@@ -376,6 +395,17 @@ export const SoDauBaiModule: React.FC<SoDauBaiModuleProps> = ({
             >
               <FolderDown className="w-3.5 h-3.5 text-amber-300" />
               <span>Lưu trữ PDF</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setStatusBanner(`Đã đồng bộ dữ liệu Sổ đầu bài Lớp ${selectedClass} (Tuần ${weekNumber}).`)
+              }
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Làm mới dữ liệu"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
             </button>
           </div>
         </div>
@@ -419,6 +449,7 @@ export const SoDauBaiModule: React.FC<SoDauBaiModuleProps> = ({
                   tiết
                 </th>
                 <th className="py-3 px-3.5 min-w-[220px]">Nhận xét của giáo viên</th>
+                <th className="py-3 px-2.5 w-24 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -498,30 +529,51 @@ export const SoDauBaiModule: React.FC<SoDauBaiModuleProps> = ({
                       {lesson.absentNotes || ''}
                     </td>
 
-                    {/* Col 8: Nhận xét của giáo viên (+ subtle SmartCA badge on hover) */}
+                    {/* Col 8: Nhận xét của giáo viên */}
                     <td className="py-3.5 px-3.5 align-top text-slate-600 leading-relaxed">
-                      <div className="flex items-start justify-between gap-2">
-                        <span>
-                          {lesson.lessonContentSummary ||
-                            lesson.notes ||
-                            'Học sinh trật tự, tập trung, tích cực phát biểu xây dựng bài.'}
-                        </span>
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 flex items-center gap-1">
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                            Đã ký
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDeleteLesson(lesson.id);
-                            }}
-                            className="p-1 rounded text-slate-400 hover:text-rose-600"
-                            title="Xóa tiết học"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                      <span>
+                        {lesson.lessonContentSummary ||
+                          lesson.notes ||
+                          'Học sinh trật tự, tập trung, tích cực phát biểu xây dựng bài.'}
+                      </span>
+                    </td>
+
+                    {/* Col 9: Thao tác chỉnh sửa & ký số */}
+                    <td className="py-3.5 px-2.5 align-top text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingLesson(lesson);
+                          }}
+                          className="p-1 rounded-md text-blue-600 hover:bg-blue-100 transition-colors"
+                          title="Chỉnh sửa nội dung tiết dạy"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSigningModalLesson(lesson);
+                          }}
+                          className="p-1 rounded-md text-emerald-600 hover:bg-emerald-100 transition-colors"
+                          title="Xem chứng thư ký số SmartCA"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteLesson(lesson.id);
+                          }}
+                          className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="Xóa tiết học"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -783,6 +835,241 @@ export const SoDauBaiModule: React.FC<SoDauBaiModuleProps> = ({
                   className="px-4 py-2 rounded-lg bg-[#1565c0] hover:bg-[#0d47a1] text-white font-bold text-xs shadow-xs cursor-pointer"
                 >
                   Ký Số & Lưu Vào Sổ Đầu Bài
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Chỉnh Sửa Tiết Sổ Đầu Bài */}
+      {editingLesson && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Chỉnh Sửa Tiết Sổ Đầu Bài - Lớp {editingLesson.className}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Cập nhật nội dung giảng dạy, tiết PPCT & nhận xét giáo viên
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingLesson(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const sig = generateDigitalSignature(
+                  `SDB-${editingLesson.className}-${editingLesson.dayOfWeek}-T${editingLesson.period}`,
+                  currentUser.name,
+                  currentUser.signatureCertId,
+                  new Date().toISOString(),
+                  currentUser.schoolCode || '460012'
+                );
+                const updated: LessonRecord = {
+                  ...editingLesson,
+                  signatureHash: sig.signatureHash,
+                  signerName: currentUser.name,
+                  signedAt: new Date().toLocaleDateString('vi-VN')
+                };
+                onUpdateLesson(updated);
+                setStatusBanner(`Đã cập nhật và ký số lại tiết học "${updated.lessonName}".`);
+                setEditingLesson(null);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Thứ</label>
+                  <select
+                    value={editingLesson.dayOfWeek}
+                    onChange={(e) => setEditingLesson({ ...editingLesson, dayOfWeek: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                  >
+                    <option value="Thứ Hai">Thứ Hai</option>
+                    <option value="Thứ Ba">Thứ Ba</option>
+                    <option value="Thứ Tư">Thứ Tư</option>
+                    <option value="Thứ Năm">Thứ Năm</option>
+                    <option value="Thứ Sáu">Thứ Sáu</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Ngày</label>
+                  <input
+                    type="text"
+                    value={editingLesson.date}
+                    onChange={(e) => setEditingLesson({ ...editingLesson, date: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Buổi / Tiết</label>
+                  <div className="flex gap-1.5">
+                    <select
+                      value={editingLesson.session}
+                      onChange={(e) =>
+                        setEditingLesson({
+                          ...editingLesson,
+                          session: e.target.value as 'SANG' | 'CHIEU'
+                        })
+                      }
+                      className="w-1/2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                    >
+                      <option value="SANG">Sáng</option>
+                      <option value="CHIEU">Chiều</option>
+                    </select>
+                    <select
+                      value={editingLesson.period}
+                      onChange={(e) =>
+                        setEditingLesson({ ...editingLesson, period: Number(e.target.value) })
+                      }
+                      className="w-1/2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                    >
+                      <option value="1">T1</option>
+                      <option value="2">T2</option>
+                      <option value="3">T3</option>
+                      <option value="4">T4</option>
+                      <option value="5">T5</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    Môn học / HĐGD
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingLesson.subject}
+                    onChange={(e) => setEditingLesson({ ...editingLesson, subject: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    Tiết PPCT
+                  </label>
+                  <input
+                    type="text"
+                    value={editingLesson.ppctNumber || ''}
+                    onChange={(e) => setEditingLesson({ ...editingLesson, ppctNumber: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Đề bài hay nội dung công việc
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editingLesson.lessonName}
+                  onChange={(e) => setEditingLesson({ ...editingLesson, lessonName: e.target.value })}
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Tên HS nghỉ tiết
+                </label>
+                <input
+                  type="text"
+                  value={editingLesson.absentNotes || ''}
+                  onChange={(e) => setEditingLesson({ ...editingLesson, absentNotes: e.target.value })}
+                  placeholder="Để trống nếu không có học sinh vắng"
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Nhận xét của giáo viên
+                </label>
+                <textarea
+                  rows={2}
+                  value={editingLesson.lessonContentSummary || editingLesson.notes || ''}
+                  onChange={(e) =>
+                    setEditingLesson({
+                      ...editingLesson,
+                      lessonContentSummary: e.target.value,
+                      notes: e.target.value
+                    })
+                  }
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    Xếp loại tiết học
+                  </label>
+                  <select
+                    value={editingLesson.classDisciplineRank || 'Tốt'}
+                    onChange={(e) =>
+                      setEditingLesson({
+                        ...editingLesson,
+                        classDisciplineRank: e.target.value as LessonRecord['classDisciplineRank']
+                      })
+                    }
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold"
+                  >
+                    <option value="Tốt">Loại A - Tốt</option>
+                    <option value="Khá">Loại B - Khá</option>
+                    <option value="Trung bình">Loại C - Trung bình</option>
+                    <option value="Đạt">Đạt</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    Điểm số (thang 10)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={editingLesson.score ?? 10}
+                    onChange={(e) => setEditingLesson({ ...editingLesson, score: Number(e.target.value) })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingLesson(null)}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-[#1565c0] hover:bg-[#0d47a1] text-white font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Ký Số & Cập Nhật Tiết Học
                 </button>
               </div>
             </form>

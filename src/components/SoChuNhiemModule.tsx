@@ -17,8 +17,13 @@ import {
   Smartphone,
   CheckCheck,
   Plus,
-  Trash2
+  Trash2,
+  Pencil,
+  Upload,
+  FileSpreadsheet,
+  Check
 } from 'lucide-react';
+import { exportSoChuNhiemToExcel } from '../utils/excel_exporter';
 import { StudentProfile, UserProfile, ParentNotification } from '../types/edtech';
 
 interface SoChuNhiemModuleProps {
@@ -27,6 +32,7 @@ interface SoChuNhiemModuleProps {
   onUpdateStudent: (updated: StudentProfile) => void;
   onAddStudent: (newStudent: StudentProfile) => void;
   onDeleteStudent: (studentId: string) => void;
+  onOpenAiTemplateImport?: () => void;
 }
 
 export const SoChuNhiemModule: React.FC<SoChuNhiemModuleProps> = ({
@@ -34,11 +40,13 @@ export const SoChuNhiemModule: React.FC<SoChuNhiemModuleProps> = ({
   students,
   onUpdateStudent,
   onAddStudent,
-  onDeleteStudent
+  onDeleteStudent,
+  onOpenAiTemplateImport
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterAttendance, setFilterAttendance] = useState<string>('ALL');
   const [selectedStudentForMsg, setSelectedStudentForMsg] = useState<StudentProfile | null>(null);
+  const [editingStudent, setEditingStudent] = useState<StudentProfile | null>(null);
   const [messageChannel, setMessageChannel] = useState<'ZALO_OA' | 'SMS_EDU'>('ZALO_OA');
   const [messageTitle, setMessageTitle] = useState<string>('');
   const [messageContent, setMessageContent] = useState<string>('');
@@ -185,6 +193,28 @@ export const SoChuNhiemModule: React.FC<SoChuNhiemModuleProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {onOpenAiTemplateImport && (
+              <button
+                type="button"
+                onClick={onOpenAiTemplateImport}
+                className="px-3.5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                title="Tải lên danh sách học sinh từ file Excel/Word bằng AI"
+              >
+                <Upload className="w-4 h-4" />
+                Tải Lên File (AI)
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => exportSoChuNhiemToExcel(students, currentUser.className || '4/1')}
+              className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              title="Xuất toàn bộ danh sách lớp và Sổ chủ nhiệm ra Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Tải Xuống Excel
+            </button>
+
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
@@ -409,6 +439,15 @@ export const SoChuNhiemModule: React.FC<SoChuNhiemModuleProps> = ({
 
                     <td className="py-3 px-3 text-right whitespace-nowrap">
                       <div className="inline-flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingStudent(student)}
+                          className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1 border border-blue-200 transition-colors cursor-pointer"
+                          title="Chỉnh sửa hồ sơ học sinh"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Sửa</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleOpenMessageModal(student)}
@@ -668,6 +707,191 @@ export const SoChuNhiemModule: React.FC<SoChuNhiemModuleProps> = ({
                 >
                   <Send className="w-4 h-4" />
                   Gửi Thông Báo Ngay
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Chỉnh Sửa Hồ Sơ Học Sinh */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-indigo-600" />
+                Chỉnh Sửa Hồ Sơ Học Sinh & Sổ Chủ Nhiệm
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingStudent(null)}
+                className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onUpdateStudent(editingStudent);
+                setStatusBanner(`Đã cập nhật thành công hồ sơ học sinh "${editingStudent.fullName}".`);
+                setEditingStudent(null);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Họ và tên học sinh</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingStudent.fullName}
+                    onChange={(e) =>
+                      setEditingStudent({ ...editingStudent, fullName: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Mã học sinh (Cơ sở dữ liệu ngành)</label>
+                  <input
+                    type="text"
+                    value={editingStudent.studentCode}
+                    onChange={(e) =>
+                      setEditingStudent({ ...editingStudent, studentCode: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-purple-700 font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Ngày sinh</label>
+                  <input
+                    type="text"
+                    value={editingStudent.birthDate}
+                    onChange={(e) =>
+                      setEditingStudent({ ...editingStudent, birthDate: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Giới tính</label>
+                  <select
+                    value={editingStudent.gender}
+                    onChange={(e) =>
+                      setEditingStudent({
+                        ...editingStudent,
+                        gender: e.target.value as 'Nam' | 'Nữ'
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  >
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Lớp</label>
+                  <input
+                    type="text"
+                    value={editingStudent.className || ''}
+                    onChange={(e) =>
+                      setEditingStudent({ ...editingStudent, className: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Họ tên Phụ huynh</label>
+                  <input
+                    type="text"
+                    value={editingStudent.parentName}
+                    onChange={(e) =>
+                      setEditingStudent({ ...editingStudent, parentName: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Số điện thoại phụ huynh</label>
+                  <input
+                    type="text"
+                    value={editingStudent.parentPhone}
+                    onChange={(e) =>
+                      setEditingStudent({ ...editingStudent, parentPhone: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Địa chỉ cư trú</label>
+                <input
+                  type="text"
+                  value={editingStudent.address || ''}
+                  onChange={(e) =>
+                    setEditingStudent({ ...editingStudent, address: e.target.value })
+                  }
+                  placeholder="VD: Phường Phú Bài, Thị xã Hương Thủy..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tình trạng sức khỏe</label>
+                  <input
+                    type="text"
+                    value={editingStudent.healthStatus || 'Bình thường'}
+                    onChange={(e) =>
+                      setEditingStudent({ ...editingStudent, healthStatus: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Điểm danh hôm nay</label>
+                  <select
+                    value={editingStudent.todayAttendance}
+                    onChange={(e) =>
+                      setEditingStudent({
+                        ...editingStudent,
+                        todayAttendance: e.target.value as StudentProfile['todayAttendance']
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  >
+                    <option value="CO_MAT">Có mặt</option>
+                    <option value="NGHI_PHEP">Nghỉ có phép</option>
+                    <option value="NGHI_KHONG_PHEP">Nghỉ không phép</option>
+                    <option value="DI_MUON">Đi muộn</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingStudent(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  Lưu Thay Đổi
                 </button>
               </div>
             </form>

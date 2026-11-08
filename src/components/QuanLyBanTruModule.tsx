@@ -31,8 +31,12 @@ import {
   BadgeCheck,
   Check,
   Calendar,
-  X
+  X,
+  Pencil,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
+import { exportBanTruToExcel } from '../utils/excel_exporter';
 import {
   UserProfile,
   BoardingStudentRecord,
@@ -119,6 +123,10 @@ export const QuanLyBanTruModule: React.FC<QuanLyBanTruModuleProps> = ({
     afternoonSnack: 'Sữa học đường Vinamilk 180ml',
     caloriesKcal: 690
   });
+
+  // Edit Modals State
+  const [editingStudentRecord, setEditingStudentRecord] = useState<BoardingStudentRecord | null>(null);
+  const [editingMenuRecord, setEditingMenuRecord] = useState<BoardingMenuRecord | null>(null);
 
   const stats = calculateBoardingDailyStats(boardingRecords, boardingMenus);
   const todayStr = new Date().toISOString().split('T')[0];
@@ -306,62 +314,103 @@ export const QuanLyBanTruModule: React.FC<QuanLyBanTruModuleProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-900 border border-orange-200">
-                <Utensils className="w-3.5 h-3.5 text-orange-700" />
-                Quyết định 1246/QĐ-BYT • Kiểm thực 3 bước & Lưu mẫu 24h
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-900 border border-purple-200">
-                <Building className="w-3.5 h-3.5 text-purple-700" />
-                2 Cơ Sở: Trường chính & Phân hiệu Phú Bài
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                BGH Chỉ Đạo: Phan Hữu Tùng & Võ Thị Kim Oanh
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Quản Lý Bán Trú Tiểu Học & An Toàn Vệ Sinh Thực Phẩm Điện Tử
-            </h2>
-            <p className="text-xs text-slate-600 mt-1 max-w-3xl leading-relaxed">
-              Thực hiện theo nguyên tắc: <strong className="text-slate-900">&quot;Một kế hoạch – một quy trình – một tiêu chuẩn chất lượng – hai cơ sở thực hiện phù hợp điều kiện thực tế&quot;</strong> và phương châm <strong className="text-purple-900">&quot;Rõ người – rõ việc – rõ vị trí – rõ thời gian – rõ trách nhiệm&quot;</strong> (Quy chế Bán trú năm học 2026–2027).
-            </p>
+      {/* Top Banner - Bố cục hành chính sư phạm khoa học & hiện đại */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+        {/* Hàng 1: Huy hiệu chứng nhận & Định danh 2 cơ sở */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-800 border border-orange-200">
+              <Utensils className="w-3.5 h-3.5 text-orange-600" />
+              QĐ 1246/QĐ-BYT • Kiểm thực 3 bước & Lưu mẫu 24h
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200">
+              <Building className="w-3.5 h-3.5 text-purple-600" />
+              2 Cơ Sở: Trường chính & Phân hiệu Phú Bài
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              BGH Chỉ Đạo: Phan Hữu Tùng & Võ Thị Kim Oanh
+            </span>
           </div>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Năm học 2026 - 2027
+          </span>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+        {/* Hàng 2: Tiêu đề toàn màn hình & Khẩu hiệu hành động */}
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <span className="w-2.5 h-6 rounded-full bg-orange-500 inline-block"></span>
+            Quản Lý Bán Trú Tiểu Học & An Toàn Vệ Sinh Thực Phẩm Điện Tử
+          </h2>
+          <div className="mt-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-600 leading-relaxed flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <span>
+              Nguyên tắc: <strong className="text-slate-900">&quot;Một kế hoạch – một quy trình – một tiêu chuẩn chất lượng – hai cơ sở thực hiện phù hợp điều kiện thực tế&quot;</strong> • Phương châm: <strong className="text-purple-900">&quot;Rõ người – rõ việc – rõ vị trí – rõ thời gian – rõ trách nhiệm&quot;</strong>.
+            </span>
+            <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded border border-purple-200 shrink-0 self-start md:self-auto">
+              Quy chế số /QĐ-THPB
+            </span>
+          </div>
+        </div>
+
+        {/* Hàng 3: Thanh công cụ chức năng chia nhóm khoa học */}
+        <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
+          {/* Nhóm 1: Dữ liệu thực tế & Pháp chế */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleLoadPhuBai39Students}
               title="Nạp 39 học sinh thực tế của Lớp 4/1 từ file DSHS TOAN TRUONG 26_27.xls"
-              className="px-3 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
               <BadgeCheck className="w-4 h-4 text-slate-950" />
-              Nạp 39 HS Thực Tế Lớp 4/1
+              Nạp 39 HS Thực Tế (Lớp 4/1)
             </button>
             <button
               type="button"
               onClick={() => setShowQuyCheModal(true)}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
               <BookOpen className="w-4 h-4 text-amber-300" />
               Quy Chế Bán Trú (QĐ 2026)
             </button>
+          </div>
+
+          {/* Nhóm 2: Tải lên & Tải xuống (Import / Export) */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={onOpenAiTemplateImport}
-              className="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              title="Tải lên file danh sách, thực đơn Excel/Word/CSV bằng AI"
+              className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
               <Upload className="w-4 h-4" />
-              Tải File Hồ Sơ Mẫu (AI)
+              Tải Lên File (AI / Excel)
             </button>
             <button
               type="button"
+              onClick={() =>
+                exportBanTruToExcel(
+                  boardingRecords,
+                  boardingMenus,
+                  currentUser.className || '4/1',
+                  new Date().toLocaleDateString('vi-VN')
+                )
+              }
+              title="Tải toàn bộ sổ bán trú và thực đơn kiểm thực ra file Excel chuẩn"
+              className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Tải Xuống Sổ Bán Trú (Excel)
+            </button>
+          </div>
+
+          {/* Nhóm 3: Thêm mới hồ sơ & thực đơn */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
               onClick={() => setShowAddStudentModal(true)}
-              className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Thêm HS Bán Trú
@@ -369,9 +418,9 @@ export const QuanLyBanTruModule: React.FC<QuanLyBanTruModuleProps> = ({
             <button
               type="button"
               onClick={() => setShowAddMenuModal(true)}
-              className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
-              <ClipboardCheck className="w-4 h-4" />
+              <Utensils className="w-4 h-4" />
               Thêm Thực Đơn
             </button>
           </div>
@@ -797,6 +846,14 @@ export const QuanLyBanTruModule: React.FC<QuanLyBanTruModuleProps> = ({
                             </button>
                             <button
                               type="button"
+                              onClick={() => setEditingStudentRecord(rec)}
+                              title="Chỉnh sửa chi tiết hồ sơ bán trú học sinh"
+                              className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => onDeleteBoardingRecord(rec.id)}
                               title="Xóa khỏi danh sách bán trú"
                               className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
@@ -903,13 +960,24 @@ export const QuanLyBanTruModule: React.FC<QuanLyBanTruModuleProps> = ({
                     <span className="truncate max-w-[170px]" title={menu.signatureHash || 'SMARTCA'}>
                       Ký số: <strong className="text-emerald-800 font-mono">{menu.signatureHash || 'SMARTCA-ATTP'}</strong>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => onDeleteBoardingMenu(menu.id)}
-                      className="text-rose-500 hover:text-rose-700 font-bold cursor-pointer"
-                    >
-                      Xóa
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingMenuRecord(menu)}
+                        className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
+                        title="Chỉnh sửa thực đơn và kiểm thực"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Sửa
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteBoardingMenu(menu.id)}
+                        className="text-rose-500 hover:text-rose-700 font-bold cursor-pointer"
+                      >
+                        Xóa
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1667,6 +1735,470 @@ export const QuanLyBanTruModule: React.FC<QuanLyBanTruModuleProps> = ({
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer"
                 >
                   Ký Xác Nhận Kiểm Thực & Lưu Mẫu 24h
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL: EDIT STUDENT BOARDING RECORD
+         ========================================================================= */}
+      {editingStudentRecord && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-blue-600" />
+                  Chỉnh Sửa Hồ Sơ Bán Trú Học Sinh
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  {editingStudentRecord.studentName} • Mã HS: {editingStudentRecord.studentId}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingStudentRecord(null)}
+                className="text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onUpdateBoardingRecord(editingStudentRecord);
+                setStatusMessage(
+                  `Đã cập nhật thành công hồ sơ bán trú cho học sinh "${editingStudentRecord.studentName}".`
+                );
+                setEditingStudentRecord(null);
+              }}
+              className="space-y-3.5 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Họ và tên học sinh</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingStudentRecord.studentName}
+                    onChange={(e) =>
+                      setEditingStudentRecord({ ...editingStudentRecord, studentName: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Lớp / Cơ sở thực hiện</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editingStudentRecord.className}
+                      onChange={(e) =>
+                        setEditingStudentRecord({ ...editingStudentRecord, className: e.target.value })
+                      }
+                      className="w-1/2 p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                    />
+                    <select
+                      value={editingStudentRecord.campus || 'Trường chính'}
+                      onChange={(e) =>
+                        setEditingStudentRecord({
+                          ...editingStudentRecord,
+                          campus: e.target.value as 'Trường chính' | 'Phân hiệu'
+                        })
+                      }
+                      className="w-1/2 p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                    >
+                      <option value="Trường chính">Trường chính</option>
+                      <option value="Phân hiệu">Phân hiệu</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Điểm danh ăn</label>
+                  <select
+                    value={editingStudentRecord.mealAttendance}
+                    onChange={(e) =>
+                      setEditingStudentRecord({
+                        ...editingStudentRecord,
+                        mealAttendance: e.target.value as BoardingStudentRecord['mealAttendance']
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  >
+                    <option value="CO_AN">Có ăn bán trú</option>
+                    <option value="CHE_DO_RIENG">Chế độ riêng / Dị ứng</option>
+                    <option value="NGHI_CO_PHEP">Nghỉ ăn có phép</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Khẩu phần ăn</label>
+                  <select
+                    value={editingStudentRecord.portionStatus}
+                    onChange={(e) =>
+                      setEditingStudentRecord({
+                        ...editingStudentRecord,
+                        portionStatus: e.target.value as BoardingStudentRecord['portionStatus']
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  >
+                    <option value="HET_SUAT">Ăn hết suất</option>
+                    <option value="CON_THUA">Còn thừa</option>
+                    <option value="CAN_HO_TRO">Cần hỗ trợ</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Giấc ngủ trưa</label>
+                  <select
+                    value={editingStudentRecord.napStatus}
+                    onChange={(e) =>
+                      setEditingStudentRecord({
+                        ...editingStudentRecord,
+                        napStatus: e.target.value as BoardingStudentRecord['napStatus']
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  >
+                    <option value="NGU_TOT">Ngủ ngoan đúng giờ</option>
+                    <option value="KHO_NGU">Khó ngủ / Trằn trọc</option>
+                    <option value="THEO_DOI_SUC_KHOE">Theo dõi sức khỏe</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Thân nhiệt & Theo dõi</label>
+                  <input
+                    type="text"
+                    value={editingStudentRecord.healthTemperature || ''}
+                    onChange={(e) =>
+                      setEditingStudentRecord({ ...editingStudentRecord, healthTemperature: e.target.value })
+                    }
+                    placeholder="VD: 36.6°C - Bình thường"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tiền ăn & Phí bán trú</label>
+                  <select
+                    value={editingStudentRecord.boardingFeeStatus}
+                    onChange={(e) =>
+                      setEditingStudentRecord({
+                        ...editingStudentRecord,
+                        boardingFeeStatus: e.target.value as BoardingStudentRecord['boardingFeeStatus']
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  >
+                    <option value="DA_DONG">Đã đóng đủ</option>
+                    <option value="CHUA_DONG">Chưa đóng</option>
+                    <option value="MIEN_GIAM">Miễn giảm chính sách</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Ghi chú dị ứng / Chế độ ăn uống đặc biệt
+                </label>
+                <input
+                  type="text"
+                  value={editingStudentRecord.allergyOrDietNote}
+                  onChange={(e) =>
+                    setEditingStudentRecord({ ...editingStudentRecord, allergyOrDietNote: e.target.value })
+                  }
+                  placeholder="VD: Dị ứng tôm cua, không ăn trứng gà..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 flex flex-wrap items-center justify-between gap-3">
+                <span className="font-bold text-blue-900">Xác nhận bàn giao 2 chiều:</span>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-800 font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={editingStudentRecord.handoverMorningConfirmed !== false}
+                      onChange={(e) =>
+                        setEditingStudentRecord({
+                          ...editingStudentRecord,
+                          handoverMorningConfirmed: e.target.checked
+                        })
+                      }
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    Bàn giao sáng 10h30
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-800 font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={editingStudentRecord.handoverAfternoonConfirmed !== false}
+                      onChange={(e) =>
+                        setEditingStudentRecord({
+                          ...editingStudentRecord,
+                          handoverAfternoonConfirmed: e.target.checked
+                        })
+                      }
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    Bàn giao chiều 13h45
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700">Nhận xét chăm sóc bán trú hàng ngày</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const comment = synthesizeBoardingCareComment(editingStudentRecord);
+                      setEditingStudentRecord({ ...editingStudentRecord, teacherNote: comment });
+                    }}
+                    className="text-purple-600 hover:text-purple-800 font-bold flex items-center gap-1 cursor-pointer text-[11px]"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Tạo lại nhận xét tự động
+                  </button>
+                </div>
+                <textarea
+                  rows={3}
+                  value={editingStudentRecord.teacherNote || ''}
+                  onChange={(e) =>
+                    setEditingStudentRecord({ ...editingStudentRecord, teacherNote: e.target.value })
+                  }
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl leading-relaxed"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingStudentRecord(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  Lưu Thay Đổi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL: EDIT BOARDING MENU & INSPECTION RECORD
+         ========================================================================= */}
+      {editingMenuRecord && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-teal-600" />
+                Chỉnh Sửa Thực Đơn & Biên Bản Kiểm Thực 3 Bước
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingMenuRecord(null)}
+                className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const sig = generateDigitalSignature(
+                  `ATTP-${editingMenuRecord.dayOfWeek}`,
+                  currentUser.name,
+                  currentUser.signatureCertId,
+                  new Date().toISOString(),
+                  currentUser.schoolCode || '460012'
+                );
+                const updated: BoardingMenuRecord = {
+                  ...editingMenuRecord,
+                  signatureHash: sig.signatureHash,
+                  inspectorName: currentUser.name
+                };
+                onUpdateBoardingMenu(updated);
+                setStatusMessage(
+                  `Đã cập nhật và ký số lại thực đơn "${updated.dayOfWeek}" (${sig.signatureHash}).`
+                );
+                setEditingMenuRecord(null);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Thứ trong tuần</label>
+                  <select
+                    value={editingMenuRecord.dayOfWeek}
+                    onChange={(e) =>
+                      setEditingMenuRecord({ ...editingMenuRecord, dayOfWeek: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  >
+                    <option value="Thứ Hai">Thứ Hai</option>
+                    <option value="Thứ Ba">Thứ Ba</option>
+                    <option value="Thứ Tư">Thứ Tư</option>
+                    <option value="Thứ Năm">Thứ Năm</option>
+                    <option value="Thứ Sáu">Thứ Sáu</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Định lượng năng lượng (Kcal)
+                  </label>
+                  <input
+                    type="number"
+                    value={editingMenuRecord.caloriesKcal}
+                    onChange={(e) =>
+                      setEditingMenuRecord({
+                        ...editingMenuRecord,
+                        caloriesKcal: Number(e.target.value)
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Món mặn chính</label>
+                <input
+                  type="text"
+                  required
+                  value={editingMenuRecord.lunchMainDish}
+                  onChange={(e) =>
+                    setEditingMenuRecord({ ...editingMenuRecord, lunchMainDish: e.target.value })
+                  }
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Món xào / luộc</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMenuRecord.lunchSideDish}
+                    onChange={(e) =>
+                      setEditingMenuRecord({ ...editingMenuRecord, lunchSideDish: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Món canh</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMenuRecord.lunchSoup}
+                    onChange={(e) =>
+                      setEditingMenuRecord({ ...editingMenuRecord, lunchSoup: e.target.value })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Bữa phụ xế chiều</label>
+                <input
+                  type="text"
+                  required
+                  value={editingMenuRecord.afternoonSnack}
+                  onChange={(e) =>
+                    setEditingMenuRecord({ ...editingMenuRecord, afternoonSnack: e.target.value })
+                  }
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+                <span className="font-bold text-emerald-950 block">Kiểm thực 3 bước (QĐ 1246/QĐ-BYT):</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <span className="text-[10px] text-emerald-800 font-bold block mb-1">B1. Nhập liệu</span>
+                    <select
+                      value={editingMenuRecord.step1InputCheck}
+                      onChange={(e) =>
+                        setEditingMenuRecord({
+                          ...editingMenuRecord,
+                          step1InputCheck: e.target.value as 'DAT' | 'KHONG_DAT'
+                        })
+                      }
+                      className="w-full p-1.5 bg-white border border-emerald-300 rounded font-semibold text-[11px]"
+                    >
+                      <option value="DAT">ĐẠT</option>
+                      <option value="KHONG_DAT">K. ĐẠT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-emerald-800 font-bold block mb-1">B2. Chế biến</span>
+                    <select
+                      value={editingMenuRecord.step2ProcessingCheck}
+                      onChange={(e) =>
+                        setEditingMenuRecord({
+                          ...editingMenuRecord,
+                          step2ProcessingCheck: e.target.value as 'DAT' | 'KHONG_DAT'
+                        })
+                      }
+                      className="w-full p-1.5 bg-white border border-emerald-300 rounded font-semibold text-[11px]"
+                    >
+                      <option value="DAT">ĐẠT</option>
+                      <option value="KHONG_DAT">K. ĐẠT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-emerald-800 font-bold block mb-1">B3. Lưu mẫu 24h</span>
+                    <select
+                      value={editingMenuRecord.step3SampleSaved}
+                      onChange={(e) =>
+                        setEditingMenuRecord({
+                          ...editingMenuRecord,
+                          step3SampleSaved: e.target.value as 'DA_LUU_MAU_24H' | 'CHUA_LUU'
+                        })
+                      }
+                      className="w-full p-1.5 bg-white border border-emerald-300 rounded font-semibold text-[11px]"
+                    >
+                      <option value="DA_LUU_MAU_24H">ĐÃ LƯU 24H</option>
+                      <option value="CHUA_LUU">CHƯA LƯU</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingMenuRecord(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  Ký Số & Lưu Thay Đổi
                 </button>
               </div>
             </form>

@@ -714,6 +714,19 @@ export default function App() {
     }
   };
 
+  const handleUpdateTimetableSlot = async (slot: TimetableSlot) => {
+    const ownerUid = firebaseUser?.uid || currentUser?.id || slot.ownerUid || 'local';
+    const withOwner = { ...slot, ownerUid };
+    setTimetableSlots((prev) => prev.map((s) => (s.id === withOwner.id ? withOwner : s)));
+    if (firebaseUser) {
+      try {
+        await setDoc(doc(db, 'timetable_slots', sanitizeId(withOwner.id)), withOwner);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
   const handleDeleteTimetableSlot = async (slotId: string) => {
     setTimetableSlots((prev) => prev.filter((s) => s.id !== slotId));
     if (firebaseUser) {
@@ -1155,6 +1168,7 @@ export default function App() {
                 onAddRecord={handleAddTt27Record}
                 onDeleteRecord={handleDeleteTt27Record}
                 onOpenMonthlyReport={() => setIsMonthlyReportOpen(true)}
+                onOpenAiTemplateImport={() => setIsAiTemplateImportOpen(true)}
               />
             )}
 
@@ -1182,6 +1196,7 @@ export default function App() {
                 onUpdateStudent={handleUpdateStudent}
                 onAddStudent={handleAddStudent}
                 onDeleteStudent={handleDeleteStudent}
+                onOpenAiTemplateImport={() => setIsAiTemplateImportOpen(true)}
               />
             )}
 
@@ -1193,6 +1208,7 @@ export default function App() {
                 onAddLesson={handleAddLesson}
                 onDeleteLesson={handleDeleteLesson}
                 onOpenMonthlyReport={() => setIsMonthlyReportOpen(true)}
+                onOpenAiTemplateImport={() => setIsAiTemplateImportOpen(true)}
               />
             )}
 
@@ -1211,7 +1227,9 @@ export default function App() {
                 currentUser={currentUser}
                 timetableSlots={timetableSlots}
                 onAddSlot={handleAddTimetableSlot}
+                onUpdateSlot={handleUpdateTimetableSlot}
                 onDeleteSlot={handleDeleteTimetableSlot}
+                onOpenAiTemplateImport={() => setIsAiTemplateImportOpen(true)}
               />
             )}
 

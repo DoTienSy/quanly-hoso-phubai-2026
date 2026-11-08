@@ -13,8 +13,12 @@ import {
   RefreshCw,
   User,
   Check,
-  Trash2
+  Trash2,
+  Pencil,
+  Upload,
+  FileSpreadsheet
 } from 'lucide-react';
+import { exportThoiKhoaBieuToExcel } from '../utils/excel_exporter';
 import { TimetableSlot, UserProfile } from '../types/edtech';
 import { detectTimetableConflicts } from '../utils/edtech_logic';
 
@@ -22,19 +26,24 @@ interface ThoiKhoaBieuModuleProps {
   currentUser: UserProfile;
   timetableSlots: TimetableSlot[];
   onAddSlot: (slot: TimetableSlot) => void;
+  onUpdateSlot?: (slot: TimetableSlot) => void;
   onDeleteSlot: (slotId: string) => void;
+  onOpenAiTemplateImport?: () => void;
 }
 
 export const ThoiKhoaBieuModule: React.FC<ThoiKhoaBieuModuleProps> = ({
   currentUser,
   timetableSlots,
   onAddSlot,
-  onDeleteSlot
+  onUpdateSlot,
+  onDeleteSlot,
+  onOpenAiTemplateImport
 }) => {
   const [selectedClass, setSelectedClass] = useState<string>(currentUser.className || 'Lớp 4A');
   const [isOptimizing, setIsOptimizing] = useState<boolean>(false);
   const [optimizationSuccessMsg, setOptimizationSuccessMsg] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
 
   const [newSlot, setNewSlot] = useState({
     dayOfWeek: 2 as 2 | 3 | 4 | 5 | 6,
@@ -110,6 +119,28 @@ export const ThoiKhoaBieuModule: React.FC<ThoiKhoaBieuModuleProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {onOpenAiTemplateImport && (
+              <button
+                type="button"
+                onClick={onOpenAiTemplateImport}
+                className="px-3.5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                title="Tải lên Thời khóa biểu từ file Excel/Word bằng AI"
+              >
+                <Upload className="w-4 h-4" />
+                Tải Lên File (AI)
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => exportThoiKhoaBieuToExcel(timetableSlots, selectedClass)}
+              className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              title="Xuất Thời khóa biểu lớp học ra file Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Tải Xuống Excel
+            </button>
+
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
@@ -195,14 +226,27 @@ export const ThoiKhoaBieuModule: React.FC<ThoiKhoaBieuModuleProps> = ({
                       <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-1">
                         <span>Tiết {p}</span>
                         {slot && (
-                          <button
-                            type="button"
-                            onClick={() => onDeleteSlot(slot.id)}
-                            className="text-slate-400 hover:text-rose-600"
-                            title="Xóa tiết"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingSlot(slot);
+                              }}
+                              className="text-slate-400 hover:text-blue-600 cursor-pointer p-0.5"
+                              title="Chỉnh sửa tiết học"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteSlot(slot.id)}
+                              className="text-slate-400 hover:text-rose-600 cursor-pointer p-0.5"
+                              title="Xóa tiết"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -290,6 +334,133 @@ export const ThoiKhoaBieuModule: React.FC<ThoiKhoaBieuModuleProps> = ({
                   className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold"
                 >
                   Lưu Vào TKB
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Chỉnh Sửa Tiết Học TKB */}
+      {editingSlot && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-blue-600" />
+                Chỉnh Sửa Tiết Thời Khóa Biểu
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingSlot(null)}
+                className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onUpdateSlot?.(editingSlot);
+                setEditingSlot(null);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Thứ</label>
+                  <select
+                    value={editingSlot.dayOfWeek}
+                    onChange={(e) =>
+                      setEditingSlot({
+                        ...editingSlot,
+                        dayOfWeek: Number(e.target.value) as 2 | 3 | 4 | 5 | 6
+                      })
+                    }
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
+                  >
+                    {days.map((d) => (
+                      <option key={d.dayNumber} value={d.dayNumber}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Tiết</label>
+                  <select
+                    value={editingSlot.period}
+                    onChange={(e) =>
+                      setEditingSlot({
+                        ...editingSlot,
+                        period: Number(e.target.value) as 1 | 2 | 3 | 4
+                      })
+                    }
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
+                  >
+                    {[1, 2, 3, 4].map((p) => (
+                      <option key={p} value={p}>
+                        Tiết {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Môn học</label>
+                <input
+                  type="text"
+                  required
+                  value={editingSlot.subject}
+                  onChange={(e) =>
+                    setEditingSlot({ ...editingSlot, subject: e.target.value })
+                  }
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Giáo viên giảng dạy</label>
+                <input
+                  type="text"
+                  required
+                  value={editingSlot.teacherName}
+                  onChange={(e) =>
+                    setEditingSlot({ ...editingSlot, teacherName: e.target.value })
+                  }
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Phòng học</label>
+                <input
+                  type="text"
+                  value={editingSlot.room || ''}
+                  onChange={(e) =>
+                    setEditingSlot({ ...editingSlot, room: e.target.value })
+                  }
+                  placeholder="VD: P.101, Phòng Tin học..."
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingSlot(null)}
+                  className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  Lưu Thay Đổi
                 </button>
               </div>
             </form>

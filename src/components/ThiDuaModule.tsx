@@ -9,9 +9,13 @@ import {
   Trophy,
   Sparkles,
   Plus,
-  Trash2
+  Trash2,
+  Pencil,
+  FileSpreadsheet,
+  Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { exportThiDuaToExcel } from '../utils/excel_exporter';
 import { EmulationScoreItem, UserProfile } from '../types/edtech';
 import { calculateEmulationScore, rankEmulationList } from '../utils/edtech_logic';
 
@@ -33,6 +37,7 @@ export const ThiDuaModule: React.FC<ThiDuaModuleProps> = ({
   const [selectedGrade, setSelectedGrade] = useState<number | 'ALL'>('ALL');
   const [showAddClassModal, setShowAddClassModal] = useState<boolean>(false);
   const [showAddEventModal, setShowAddEventModal] = useState<boolean>(false);
+  const [editingClassItem, setEditingClassItem] = useState<EmulationScoreItem | null>(null);
 
   const [newClassName, setNewClassName] = useState<string>(currentUser.className || 'Lớp 4A');
   const [newClassGrade, setNewClassGrade] = useState<number>(4);
@@ -145,6 +150,15 @@ export const ThiDuaModule: React.FC<ThiDuaModuleProps> = ({
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
+              onClick={() => exportThiDuaToExcel(emulationList, currentUser.currentWeek || 1)}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+              title="Xuất bảng tổng hợp chấm điểm thi đua các lớp ra file Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Tải Xuống Excel
+            </button>
+            <button
+              type="button"
               onClick={() => setShowAddClassModal(true)}
               className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all cursor-pointer"
             >
@@ -252,7 +266,7 @@ export const ThiDuaModule: React.FC<ThiDuaModuleProps> = ({
                   <th className="py-3 px-4">Điểm cộng / Điểm trừ</th>
                   <th className="py-3 px-3 text-center">Tổng điểm</th>
                   <th className="py-3 px-3 text-center">Danh hiệu</th>
-                  <th className="py-3 px-3 text-right">Xóa</th>
+                  <th className="py-3 px-3 text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -280,17 +294,28 @@ export const ThiDuaModule: React.FC<ThiDuaModuleProps> = ({
                       ) : item.award === 'CO_NHI' ? (
                         <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500 text-slate-950">🚩 CỜ NHÌ</span>
                       ) : (
-                        <span className="text-slate-500">{item.award}</span>
+                        <span className="text-slate-500 font-semibold">{item.award}</span>
                       )}
                     </td>
-                    <td className="py-3 px-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => onDeleteEmulationClass(item.id)}
-                        className="text-slate-400 hover:text-rose-600 p-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingClassItem(item)}
+                          className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                          title="Chỉnh sửa điểm thi đua của lớp"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteEmulationClass(item.id)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Xóa lớp thi đua"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -422,6 +447,194 @@ export const ThiDuaModule: React.FC<ThiDuaModuleProps> = ({
                   className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold"
                 >
                   Lưu Điểm
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Chỉnh Sửa Điểm Thi Đua Lớp */}
+      {editingClassItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-rose-600" />
+                Chỉnh Sửa Điểm & Xếp Hạng Thi Đua Lớp {editingClassItem.className}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingClassItem(null)}
+                className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const totalScore = calculateEmulationScore({
+                  baseScore: editingClassItem.baseScore,
+                  disciplineScore: editingClassItem.disciplineScore,
+                  cleanlinessScore: editingClassItem.cleanlinessScore,
+                  studyScore: editingClassItem.studyScore,
+                  movementScore: editingClassItem.movementScore,
+                  bonuses: editingClassItem.bonuses,
+                  penalties: editingClassItem.penalties
+                });
+                const updatedItem = {
+                  ...editingClassItem,
+                  totalScore
+                };
+                const updatedList = emulationList.map((item) =>
+                  item.id === updatedItem.id ? updatedItem : item
+                );
+                const ranked = rankEmulationList(updatedList);
+                onUpdateEmulationList(ranked);
+                setEditingClassItem(null);
+              }}
+              className="space-y-3.5 text-xs"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tên lớp học</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingClassItem.className}
+                    onChange={(e) =>
+                      setEditingClassItem({
+                        ...editingClassItem,
+                        className: e.target.value,
+                        classId: e.target.value
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Khối lớp (1 - 5)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={editingClassItem.grade}
+                    onChange={(e) =>
+                      setEditingClassItem({
+                        ...editingClassItem,
+                        grade: Number(e.target.value)
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Điểm nề nếp (Tối đa 50)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editingClassItem.disciplineScore}
+                    onChange={(e) =>
+                      setEditingClassItem({
+                        ...editingClassItem,
+                        disciplineScore: Number(e.target.value)
+                      })
+                    }
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Điểm vệ sinh (Tối đa 50)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editingClassItem.cleanlinessScore}
+                    onChange={(e) =>
+                      setEditingClassItem({
+                        ...editingClassItem,
+                        cleanlinessScore: Number(e.target.value)
+                      })
+                    }
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Điểm học tập (Tối đa 50)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editingClassItem.studyScore}
+                    onChange={(e) =>
+                      setEditingClassItem({
+                        ...editingClassItem,
+                        studyScore: Number(e.target.value)
+                      })
+                    }
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Điểm phong trào (Tối đa 50)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editingClassItem.movementScore}
+                    onChange={(e) =>
+                      setEditingClassItem({
+                        ...editingClassItem,
+                        movementScore: Number(e.target.value)
+                      })
+                    }
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Danh hiệu tuần</label>
+                <select
+                  value={editingClassItem.award}
+                  onChange={(e) =>
+                    setEditingClassItem({
+                      ...editingClassItem,
+                      award: e.target.value as EmulationScoreItem['award']
+                    })
+                  }
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-rose-700"
+                >
+                  <option value="CO_NHAT">🚩 CỜ NHẤT TUẦN</option>
+                  <option value="CO_NHI">🚩 CỜ NHÌ TUẦN</option>
+                  <option value="CO_BA">🚩 CỜ BA TUẦN</option>
+                  <option value="KHUYEN_KHICH">Khuyến khích</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingClassItem(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  Cập Nhật & Xếp Hạng Lại
                 </button>
               </div>
             </form>
