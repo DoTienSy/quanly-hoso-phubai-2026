@@ -1,0 +1,435 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // -------------------------------------------------------------
+    // 1. UserProfile Validation Blueprint (/users/{userId})
+    // -------------------------------------------------------------
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+        'ownerId', 'fullName', 'email', 'role', 'title',
+        'schoolName', 'schoolCode', 'district', 'schoolYear',
+        'currentWeek', 'className', 'signatureCertId', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'ownerId', 'fullName', 'email', 'role', 'title',
+        'schoolName', 'schoolCode', 'district', 'schoolYear',
+        'currentWeek', 'className', 'signatureCertId', 'createdAt', 'updatedAt'
+      ]) &&
+      data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+      data.ownerId == request.auth.uid &&
+      data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+      data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+      data.role is string && data.role.size() <= 30 &&
+      data.role in ['BGH', 'TO_TRUONG', 'GVCN', 'GVBM', 'TONG_PHU_TRACH'] &&
+      data.title is string && data.title.size() <= 150 &&
+      data.schoolName is string && data.schoolName.size() >= 1 && data.schoolName.size() <= 200 &&
+      data.schoolCode is string && data.schoolCode.size() <= 50 &&
+      data.district is string && data.district.size() <= 150 &&
+      data.schoolYear is string && data.schoolYear.size() <= 30 &&
+      data.currentWeek is number && data.currentWeek >= 1 && data.currentWeek <= 52 &&
+      data.className is string && data.className.size() <= 50 &&
+      data.signatureCertId is string && data.signatureCertId.size() <= 80 &&
+      data.createdAt is string && data.createdAt.size() <= 40 &&
+      data.updatedAt is string && data.updatedAt.size() <= 40;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid && isValidUserProfile(incoming());
+      allow update: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid &&
+        isValidUserProfile(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'fullName', 'role', 'title', 'schoolName', 'schoolCode',
+          'district', 'schoolYear', 'currentWeek', 'className',
+          'signatureCertId', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid && existing().ownerId == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------
+    // 2. LessonRecord Validation Blueprint (/lessons/{lessonId})
+    // -------------------------------------------------------------
+    function isValidLessonRecord(data) {
+      return data.keys().hasAll([
+        'ownerId', 'date', 'dayOfWeek', 'period', 'session',
+        'className', 'subject', 'lessonName', 'teacherName',
+        'attendedStudents', 'totalStudents', 'lessonContentSummary',
+        'classDisciplineRank', 'score', 'notes', 'approvalStatus',
+        'signatureHash', 'signerName', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'ownerId', 'date', 'dayOfWeek', 'period', 'session',
+        'className', 'subject', 'lessonName', 'teacherName',
+        'attendedStudents', 'totalStudents', 'lessonContentSummary',
+        'classDisciplineRank', 'score', 'notes', 'approvalStatus',
+        'signatureHash', 'signerName', 'createdAt', 'updatedAt'
+      ]) &&
+      data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+      data.ownerId == request.auth.uid &&
+      data.date is string && data.date.size() <= 20 &&
+      data.dayOfWeek is string && data.dayOfWeek.size() <= 30 &&
+      data.period is number && data.period >= 1 && data.period <= 10 &&
+      data.session is string && data.session.size() <= 10 && data.session in ['SANG', 'CHIEU'] &&
+      data.className is string && data.className.size() <= 50 &&
+      data.subject is string && data.subject.size() <= 100 &&
+      data.lessonName is string && data.lessonName.size() >= 1 && data.lessonName.size() <= 300 &&
+      data.teacherName is string && data.teacherName.size() <= 120 &&
+      data.attendedStudents is number && data.attendedStudents >= 0 && data.attendedStudents <= 100 &&
+      data.totalStudents is number && data.totalStudents >= 0 && data.totalStudents <= 100 &&
+      data.lessonContentSummary is string && data.lessonContentSummary.size() <= 1000 &&
+      data.classDisciplineRank is string && data.classDisciplineRank.size() <= 30 &&
+      data.classDisciplineRank in ['Tốt', 'Khá', 'Trung bình', 'Cần cố gắng'] &&
+      data.score is number && data.score >= 0 && data.score <= 10 &&
+      data.notes is string && data.notes.size() <= 500 &&
+      data.approvalStatus is string && data.approvalStatus.size() <= 30 &&
+      data.approvalStatus in ['CHUA_KY', 'DA_KY_GV', 'DA_DUYET_BGH'] &&
+      data.signatureHash is string && data.signatureHash.size() <= 120 &&
+      data.signerName is string && data.signerName.size() <= 120 &&
+      data.createdAt is string && data.createdAt.size() <= 40 &&
+      data.updatedAt is string && data.updatedAt.size() <= 40;
+    }
+
+    match /lessons/{lessonId} {
+      allow get: if isSignedIn() && isValidId(lessonId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(lessonId) && isValidLessonRecord(incoming());
+      allow update: if isVerifiedUser() && isValidId(lessonId) &&
+        isValidLessonRecord(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'date', 'dayOfWeek', 'period', 'session', 'className',
+          'subject', 'lessonName', 'teacherName', 'attendedStudents',
+          'totalStudents', 'lessonContentSummary', 'classDisciplineRank',
+          'score', 'notes', 'approvalStatus', 'signatureHash',
+          'signerName', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(lessonId) && existing().ownerId == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------
+    // 3. StudentProfile Validation Blueprint (/students/{studentId})
+    // -------------------------------------------------------------
+    function isValidStudentProfile(data) {
+      return data.keys().hasAll([
+        'id', 'ownerUid', 'studentCode', 'fullName', 'birthDate', 'gender',
+        'classId', 'className', 'address', 'parentName', 'parentPhone',
+        'healthStatus', 'avatarUrl', 'todayAttendance'
+      ]) &&
+      data.keys().hasOnly([
+        'id', 'ownerUid', 'studentCode', 'fullName', 'birthDate', 'gender',
+        'classId', 'className', 'address', 'parentName', 'parentPhone',
+        'parentEmail', 'healthStatus', 'specialNeeds', 'avatarUrl',
+        'todayAttendance', 'attendanceNote'
+      ]) &&
+      data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+      data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 &&
+      data.ownerUid == request.auth.uid &&
+      data.studentCode is string && data.studentCode.size() <= 50 &&
+      data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+      data.birthDate is string && data.birthDate.size() <= 30 &&
+      data.gender is string && data.gender.size() <= 10 && data.gender in ['Nam', 'Nữ'] &&
+      data.classId is string && data.classId.size() <= 50 &&
+      data.className is string && data.className.size() <= 50 &&
+      data.address is string && data.address.size() <= 300 &&
+      data.parentName is string && data.parentName.size() <= 120 &&
+      data.parentPhone is string && data.parentPhone.size() <= 30 &&
+      data.healthStatus is string && data.healthStatus.size() <= 300 &&
+      data.avatarUrl is string && data.avatarUrl.size() <= 500 &&
+      data.todayAttendance is string && data.todayAttendance.size() <= 30 &&
+      data.todayAttendance in ['CO_MAT', 'NGHI_PHEP', 'NGHI_KHONG_PHEP', 'DI_MUON'] &&
+      (!('attendanceNote' in data) || (data.attendanceNote is string && data.attendanceNote.size() <= 300)) &&
+      (!('parentEmail' in data) || (data.parentEmail is string && data.parentEmail.size() <= 150)) &&
+      (!('specialNeeds' in data) || (data.specialNeeds is string && data.specialNeeds.size() <= 300));
+    }
+
+    match /students/{studentId} {
+      allow get: if isSignedIn() && isValidId(studentId) && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(studentId) && isValidStudentProfile(incoming());
+      allow update: if isVerifiedUser() && isValidId(studentId) &&
+        isValidStudentProfile(incoming()) &&
+        existing().ownerUid == request.auth.uid &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'studentCode', 'fullName', 'birthDate', 'gender',
+          'classId', 'className', 'address', 'parentName', 'parentPhone',
+          'parentEmail', 'healthStatus', 'specialNeeds', 'avatarUrl',
+          'todayAttendance', 'attendanceNote'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(studentId) && existing().ownerUid == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------
+    // 4. StudentTT27Record Validation Blueprint (/tt27_records/{recordId})
+    // -------------------------------------------------------------
+    function isValidStudentTT27Record(data) {
+      return data.keys().hasAll([
+        'id', 'ownerUid', 'studentId', 'studentName', 'className', 'term',
+        'subjects', 'qualities', 'competencies', 'finalAward'
+      ]) &&
+      data.keys().hasOnly([
+        'id', 'ownerUid', 'studentId', 'studentName', 'className', 'term',
+        'subjects', 'qualities', 'competencies', 'finalAward', 'aiSuggestionUsed'
+      ]) &&
+      data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+      data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 &&
+      data.ownerUid == request.auth.uid &&
+      data.studentId is string && data.studentId.size() <= 128 &&
+      data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 120 &&
+      data.className is string && data.className.size() <= 50 &&
+      data.term is string && data.term.size() <= 20 &&
+      data.term in ['GIUA_HK1', 'CUOI_HK1', 'GIUA_HK2', 'CUOI_HK2'] &&
+      data.subjects is map && data.subjects.size() <= 15 &&
+      data.qualities is map && data.qualities.size() <= 10 &&
+      data.competencies is map && data.competencies.size() <= 10 &&
+      data.finalAward is string && data.finalAward.size() <= 40 &&
+      data.finalAward in ['XUAT_SAC', 'TIEU_BIEU', 'HOAN_THANH_CHUONG_TRINH', 'CHUA_HOAN_THANH'] &&
+      (!('aiSuggestionUsed' in data) || data.aiSuggestionUsed is bool);
+    }
+
+    match /tt27_records/{recordId} {
+      allow get: if isSignedIn() && isValidId(recordId) && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(recordId) && isValidStudentTT27Record(incoming());
+      allow update: if isVerifiedUser() && isValidId(recordId) &&
+        isValidStudentTT27Record(incoming()) &&
+        existing().ownerUid == request.auth.uid &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'studentName', 'className', 'term', 'subjects',
+          'qualities', 'competencies', 'finalAward', 'aiSuggestionUsed'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(recordId) && existing().ownerUid == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------
+    // 5. EmulationScore Validation Blueprint (/emulation_scores/{scoreId})
+    // -------------------------------------------------------------
+    function isValidEmulationScore(data) {
+      return data.keys().hasAll([
+        'ownerId', 'className', 'grade', 'week', 'baseScore',
+        'disciplineScore', 'cleanlinessScore', 'studyScore', 'movementScore',
+        'bonusPoints', 'bonusReason', 'penaltyPoints', 'penaltyReason',
+        'totalScore', 'rank', 'award', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'ownerId', 'className', 'grade', 'week', 'baseScore',
+        'disciplineScore', 'cleanlinessScore', 'studyScore', 'movementScore',
+        'bonusPoints', 'bonusReason', 'penaltyPoints', 'penaltyReason',
+        'totalScore', 'rank', 'award', 'createdAt', 'updatedAt'
+      ]) &&
+      data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+      data.ownerId == request.auth.uid &&
+      data.className is string && data.className.size() >= 1 && data.className.size() <= 50 &&
+      data.grade is number && data.grade >= 1 && data.grade <= 5 &&
+      data.week is number && data.week >= 1 && data.week <= 52 &&
+      data.baseScore is number && data.baseScore >= 0 && data.baseScore <= 500 &&
+      data.disciplineScore is number && data.disciplineScore >= 0 && data.disciplineScore <= 200 &&
+      data.cleanlinessScore is number && data.cleanlinessScore >= 0 && data.cleanlinessScore <= 200 &&
+      data.studyScore is number && data.studyScore >= 0 && data.studyScore <= 500 &&
+      data.movementScore is number && data.movementScore >= 0 && data.movementScore <= 200 &&
+      data.bonusPoints is number && data.bonusPoints >= 0 && data.bonusPoints <= 500 &&
+      data.bonusReason is string && data.bonusReason.size() <= 500 &&
+      data.penaltyPoints is number && data.penaltyPoints >= 0 && data.penaltyPoints <= 500 &&
+      data.penaltyReason is string && data.penaltyReason.size() <= 500 &&
+      data.totalScore is number && data.totalScore >= 0 && data.totalScore <= 2000 &&
+      data.rank is number && data.rank >= 1 && data.rank <= 100 &&
+      data.award is string && data.award.size() <= 30 &&
+      data.award in ['CO_NHAT', 'CO_NHI', 'CO_BA', 'KHUYEN_KHICH', 'NONE'] &&
+      data.createdAt is string && data.createdAt.size() <= 40 &&
+      data.updatedAt is string && data.updatedAt.size() <= 40;
+    }
+
+    match /emulation_scores/{scoreId} {
+      allow get: if isSignedIn() && isValidId(scoreId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(scoreId) && isValidEmulationScore(incoming());
+      allow update: if isVerifiedUser() && isValidId(scoreId) &&
+        isValidEmulationScore(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'className', 'grade', 'week', 'baseScore', 'disciplineScore',
+          'cleanlinessScore', 'studyScore', 'movementScore', 'bonusPoints',
+          'bonusReason', 'penaltyPoints', 'penaltyReason', 'totalScore',
+          'rank', 'award', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(scoreId) && existing().ownerId == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------
+    // 6. TimetableSlot Validation Blueprint (/timetable_slots/{slotId})
+    // -------------------------------------------------------------
+    function isValidTimetableSlot(data) {
+      return data.keys().hasAll([
+        'ownerId', 'dayOfWeek', 'period', 'session',
+        'className', 'subject', 'teacherName', 'room',
+        'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'ownerId', 'dayOfWeek', 'period', 'session',
+        'className', 'subject', 'teacherName', 'room',
+        'createdAt', 'updatedAt'
+      ]) &&
+      data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+      data.ownerId == request.auth.uid &&
+      data.dayOfWeek is number && data.dayOfWeek >= 2 && data.dayOfWeek <= 7 &&
+      data.period is number && data.period >= 1 && data.period <= 10 &&
+      data.session is string && data.session.size() <= 10 && data.session in ['SANG', 'CHIEU'] &&
+      data.className is string && data.className.size() <= 50 &&
+      data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 100 &&
+      data.teacherName is string && data.teacherName.size() <= 120 &&
+      data.room is string && data.room.size() <= 60 &&
+      data.createdAt is string && data.createdAt.size() <= 40 &&
+      data.updatedAt is string && data.updatedAt.size() <= 40;
+    }
+
+    match /timetable_slots/{slotId} {
+      allow get: if isSignedIn() && isValidId(slotId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(slotId) && isValidTimetableSlot(incoming());
+      allow update: if isVerifiedUser() && isValidId(slotId) &&
+        isValidTimetableSlot(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'dayOfWeek', 'period', 'session', 'className',
+          'subject', 'teacherName', 'room', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(slotId) && existing().ownerId == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------
+    // 7. BoardingStudentRecord Validation Blueprint (/boarding_records/{recordId})
+    // -------------------------------------------------------------
+    function isValidBoardingStudentRecord(data) {
+      return data.keys().hasAll([
+        'id', 'ownerUid', 'studentId', 'studentName', 'className',
+        'date', 'mealAttendance', 'portionStatus', 'napStatus',
+        'healthTemperature', 'allergyOrDietNote', 'boardingFeeStatus', 'teacherNote'
+      ]) &&
+      data.keys().hasOnly([
+        'id', 'ownerUid', 'studentId', 'studentName', 'className',
+        'date', 'mealAttendance', 'portionStatus', 'napStatus',
+        'healthTemperature', 'allergyOrDietNote', 'boardingFeeStatus', 'teacherNote'
+      ]) &&
+      data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+      data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 &&
+      data.ownerUid == request.auth.uid &&
+      data.studentId is string && data.studentId.size() <= 128 &&
+      data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 120 &&
+      data.className is string && data.className.size() <= 50 &&
+      data.date is string && data.date.size() <= 20 &&
+      data.mealAttendance is string && data.mealAttendance.size() <= 30 &&
+      data.mealAttendance in ['CO_AN', 'NGHI_CO_PHEP', 'CHE_DO_RIENG'] &&
+      data.portionStatus is string && data.portionStatus.size() <= 30 &&
+      data.portionStatus in ['HET_SUAT', 'CON_THUA', 'CAN_HO_TRO'] &&
+      data.napStatus is string && data.napStatus.size() <= 30 &&
+      data.napStatus in ['NGU_TOT', 'KHO_NGU', 'THEO_DOI_SUC_KHOE'] &&
+      data.healthTemperature is string && data.healthTemperature.size() <= 60 &&
+      data.allergyOrDietNote is string && data.allergyOrDietNote.size() <= 300 &&
+      data.boardingFeeStatus is string && data.boardingFeeStatus.size() <= 30 &&
+      data.boardingFeeStatus in ['DA_DONG', 'CHUA_DONG', 'MIEN_GIAM'] &&
+      data.teacherNote is string && data.teacherNote.size() <= 1000;
+    }
+
+    match /boarding_records/{recordId} {
+      allow get: if isSignedIn() && isValidId(recordId) && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(recordId) && isValidBoardingStudentRecord(incoming());
+      allow update: if isVerifiedUser() && isValidId(recordId) &&
+        isValidBoardingStudentRecord(incoming()) &&
+        existing().ownerUid == request.auth.uid &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'studentName', 'className', 'date', 'mealAttendance',
+          'portionStatus', 'napStatus', 'healthTemperature',
+          'allergyOrDietNote', 'boardingFeeStatus', 'teacherNote'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(recordId) && existing().ownerUid == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------
+    // 8. BoardingMenuRecord Validation Blueprint (/boarding_menus/{menuId})
+    // -------------------------------------------------------------
+    function isValidBoardingMenuRecord(data) {
+      return data.keys().hasAll([
+        'id', 'ownerUid', 'date', 'dayOfWeek', 'lunchMainDish',
+        'lunchSideDish', 'lunchSoup', 'afternoonSnack', 'caloriesKcal',
+        'step1InputCheck', 'step2ProcessingCheck', 'step3SampleSaved', 'inspectorName'
+      ]) &&
+      data.keys().hasOnly([
+        'id', 'ownerUid', 'date', 'dayOfWeek', 'lunchMainDish',
+        'lunchSideDish', 'lunchSoup', 'afternoonSnack', 'caloriesKcal',
+        'step1InputCheck', 'step2ProcessingCheck', 'step3SampleSaved',
+        'inspectorName', 'signatureHash'
+      ]) &&
+      data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+      data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 &&
+      data.ownerUid == request.auth.uid &&
+      data.date is string && data.date.size() <= 20 &&
+      data.dayOfWeek is string && data.dayOfWeek.size() <= 40 &&
+      data.lunchMainDish is string && data.lunchMainDish.size() <= 200 &&
+      data.lunchSideDish is string && data.lunchSideDish.size() <= 200 &&
+      data.lunchSoup is string && data.lunchSoup.size() <= 200 &&
+      data.afternoonSnack is string && data.afternoonSnack.size() <= 200 &&
+      data.caloriesKcal is number && data.caloriesKcal >= 100 && data.caloriesKcal <= 2000 &&
+      data.step1InputCheck is string && data.step1InputCheck.size() <= 20 && data.step1InputCheck in ['DAT', 'KHONG_DAT'] &&
+      data.step2ProcessingCheck is string && data.step2ProcessingCheck.size() <= 20 && data.step2ProcessingCheck in ['DAT', 'KHONG_DAT'] &&
+      data.step3SampleSaved is string && data.step3SampleSaved.size() <= 30 && data.step3SampleSaved in ['DA_LUU_MAU_24H', 'CHO_LUU_MAU'] &&
+      data.inspectorName is string && data.inspectorName.size() <= 120 &&
+      (!('signatureHash' in data) || (data.signatureHash is string && data.signatureHash.size() <= 120));
+    }
+
+    match /boarding_menus/{menuId} {
+      allow get: if isSignedIn() && isValidId(menuId) && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isVerifiedUser() && isValidId(menuId) && isValidBoardingMenuRecord(incoming());
+      allow update: if isVerifiedUser() && isValidId(menuId) &&
+        isValidBoardingMenuRecord(incoming()) &&
+        existing().ownerUid == request.auth.uid &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'date', 'dayOfWeek', 'lunchMainDish', 'lunchSideDish',
+          'lunchSoup', 'afternoonSnack', 'caloriesKcal',
+          'step1InputCheck', 'step2ProcessingCheck', 'step3SampleSaved',
+          'inspectorName', 'signatureHash'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(menuId) && existing().ownerUid == request.auth.uid;
+    }
+  }
+}

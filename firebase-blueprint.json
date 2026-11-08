@@ -1,0 +1,645 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Teacher or school administrator profile and general school settings",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Full name of the teacher or administrator",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address from Google login",
+          "maxLength": 200
+        },
+        "role": {
+          "type": "string",
+          "enum": ["BGH", "TO_TRUONG", "GVCN", "GVBM", "TONG_PHU_TRACH"],
+          "description": "Pedagogical role in the school",
+          "maxLength": 30
+        },
+        "title": {
+          "type": "string",
+          "description": "Specific position title",
+          "maxLength": 150
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "Name of the primary school",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "schoolCode": {
+          "type": "string",
+          "description": "School identification code",
+          "maxLength": 50
+        },
+        "district": {
+          "type": "string",
+          "description": "District or Department of Education name",
+          "maxLength": 150
+        },
+        "schoolYear": {
+          "type": "string",
+          "description": "Academic year",
+          "maxLength": 30
+        },
+        "currentWeek": {
+          "type": "number",
+          "description": "Current academic week number"
+        },
+        "className": {
+          "type": "string",
+          "description": "Assigned homeroom class name",
+          "maxLength": 50
+        },
+        "signatureCertId": {
+          "type": "string",
+          "description": "Digital signature certificate identifier",
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": [
+        "ownerId",
+        "fullName",
+        "email",
+        "role",
+        "title",
+        "schoolName",
+        "schoolCode",
+        "district",
+        "schoolYear",
+        "currentWeek",
+        "className",
+        "signatureCertId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LessonRecord": {
+      "title": "LessonRecord",
+      "description": "Digital class diary lesson record with SmartCA digital signature",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "dayOfWeek": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "period": {
+          "type": "number"
+        },
+        "session": {
+          "type": "string",
+          "enum": ["SANG", "CHIEU"],
+          "maxLength": 10
+        },
+        "className": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "subject": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "lessonName": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "teacherName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "attendedStudents": {
+          "type": "number"
+        },
+        "totalStudents": {
+          "type": "number"
+        },
+        "lessonContentSummary": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "classDisciplineRank": {
+          "type": "string",
+          "enum": ["Tốt", "Khá", "Trung bình", "Cần cố gắng"],
+          "maxLength": 30
+        },
+        "score": {
+          "type": "number"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "approvalStatus": {
+          "type": "string",
+          "enum": ["CHUA_KY", "DA_KY_GV", "DA_DUYET_BGH"],
+          "maxLength": 30
+        },
+        "signatureHash": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "signerName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "date",
+        "dayOfWeek",
+        "period",
+        "session",
+        "className",
+        "subject",
+        "lessonName",
+        "teacherName",
+        "attendedStudents",
+        "totalStudents",
+        "lessonContentSummary",
+        "classDisciplineRank",
+        "score",
+        "notes",
+        "approvalStatus",
+        "signatureHash",
+        "signerName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StudentProfile": {
+      "title": "StudentProfile",
+      "description": "Homeroom student profile and daily attendance status",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentCode": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "birthDate": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["Nam", "Nữ"],
+          "maxLength": 10
+        },
+        "classId": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "className": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "parentName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "parentPhone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "healthStatus": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "avatarUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "todayAttendance": {
+          "type": "string",
+          "enum": ["CO_MAT", "NGHI_PHEP", "NGHI_KHONG_PHEP", "DI_MUON"],
+          "maxLength": 30
+        },
+        "attendanceNote": {
+          "type": "string",
+          "maxLength": 300
+        }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "studentCode",
+        "fullName",
+        "birthDate",
+        "gender",
+        "classId",
+        "className",
+        "address",
+        "parentName",
+        "parentPhone",
+        "healthStatus",
+        "avatarUrl",
+        "todayAttendance"
+      ]
+    },
+    "StudentTT27Record": {
+      "title": "StudentTT27Record",
+      "description": "Student evaluation record under Circular 27/2020/TT-BGDDT analyzed by AI Smart Report",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "studentName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "className": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "term": {
+          "type": "string",
+          "enum": ["GIUA_HK1", "CUOI_HK1", "GIUA_HK2", "CUOI_HK2"],
+          "maxLength": 20
+        },
+        "subjects": {
+          "type": "object",
+          "description": "Map of subject evaluations"
+        },
+        "qualities": {
+          "type": "object",
+          "description": "Map of 5 core qualities under TT27"
+        },
+        "competencies": {
+          "type": "object",
+          "description": "Map of general and specific competencies under TT27"
+        },
+        "finalAward": {
+          "type": "string",
+          "enum": ["XUAT_SAC", "TIEU_BIEU", "HOAN_THANH_CHUONG_TRINH", "CHUA_HOAN_THANH"],
+          "maxLength": 40
+        },
+        "aiSuggestionUsed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "studentId",
+        "studentName",
+        "className",
+        "term",
+        "subjects",
+        "qualities",
+        "competencies",
+        "finalAward"
+      ]
+    },
+    "EmulationScore": {
+      "title": "EmulationScore",
+      "description": "Weekly class emulation score and ranking",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "className": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "grade": {
+          "type": "number"
+        },
+        "week": {
+          "type": "number"
+        },
+        "baseScore": {
+          "type": "number"
+        },
+        "disciplineScore": {
+          "type": "number"
+        },
+        "cleanlinessScore": {
+          "type": "number"
+        },
+        "studyScore": {
+          "type": "number"
+        },
+        "movementScore": {
+          "type": "number"
+        },
+        "bonusPoints": {
+          "type": "number"
+        },
+        "bonusReason": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "penaltyPoints": {
+          "type": "number"
+        },
+        "penaltyReason": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "totalScore": {
+          "type": "number"
+        },
+        "rank": {
+          "type": "number"
+        },
+        "award": {
+          "type": "string",
+          "enum": ["CO_NHAT", "CO_NHI", "CO_BA", "KHUYEN_KHICH", "NONE"],
+          "maxLength": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "className",
+        "grade",
+        "week",
+        "baseScore",
+        "disciplineScore",
+        "cleanlinessScore",
+        "studyScore",
+        "movementScore",
+        "bonusPoints",
+        "bonusReason",
+        "penaltyPoints",
+        "penaltyReason",
+        "totalScore",
+        "rank",
+        "award",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TimetableSlot": {
+      "title": "TimetableSlot",
+      "description": "Timetable slot for a class period",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "dayOfWeek": {
+          "type": "number"
+        },
+        "period": {
+          "type": "number"
+        },
+        "session": {
+          "type": "string",
+          "enum": ["SANG", "CHIEU"],
+          "maxLength": 10
+        },
+        "className": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "subject": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "teacherName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "room": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "dayOfWeek",
+        "period",
+        "session",
+        "className",
+        "subject",
+        "teacherName",
+        "room",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BoardingStudentRecord": {
+      "title": "BoardingStudentRecord",
+      "description": "Primary school semi-boarding student daily care, meal, nap, and health record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "className": { "type": "string", "maxLength": 50 },
+        "date": { "type": "string", "maxLength": 20 },
+        "mealAttendance": {
+          "type": "string",
+          "enum": ["CO_AN", "NGHI_CO_PHEP", "CHE_DO_RIENG"],
+          "maxLength": 30
+        },
+        "portionStatus": {
+          "type": "string",
+          "enum": ["HET_SUAT", "CON_THUA", "CAN_HO_TRO"],
+          "maxLength": 30
+        },
+        "napStatus": {
+          "type": "string",
+          "enum": ["NGU_TOT", "KHO_NGU", "THEO_DOI_SUC_KHOE"],
+          "maxLength": 30
+        },
+        "healthTemperature": { "type": "string", "maxLength": 60 },
+        "allergyOrDietNote": { "type": "string", "maxLength": 300 },
+        "boardingFeeStatus": {
+          "type": "string",
+          "enum": ["DA_DONG", "CHUA_DONG", "MIEN_GIAM"],
+          "maxLength": 30
+        },
+        "teacherNote": { "type": "string", "maxLength": 1000 }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "studentId",
+        "studentName",
+        "className",
+        "date",
+        "mealAttendance",
+        "portionStatus",
+        "napStatus",
+        "healthTemperature",
+        "allergyOrDietNote",
+        "boardingFeeStatus",
+        "teacherNote"
+      ]
+    },
+    "BoardingMenuRecord": {
+      "title": "BoardingMenuRecord",
+      "description": "Daily nutrition menu and 3-step food safety inspection log per Decision 1246/QD-BYT",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "date": { "type": "string", "maxLength": 20 },
+        "dayOfWeek": { "type": "string", "maxLength": 40 },
+        "lunchMainDish": { "type": "string", "maxLength": 200 },
+        "lunchSideDish": { "type": "string", "maxLength": 200 },
+        "lunchSoup": { "type": "string", "maxLength": 200 },
+        "afternoonSnack": { "type": "string", "maxLength": 200 },
+        "caloriesKcal": { "type": "number" },
+        "step1InputCheck": {
+          "type": "string",
+          "enum": ["DAT", "KHONG_DAT"],
+          "maxLength": 20
+        },
+        "step2ProcessingCheck": {
+          "type": "string",
+          "enum": ["DAT", "KHONG_DAT"],
+          "maxLength": 20
+        },
+        "step3SampleSaved": {
+          "type": "string",
+          "enum": ["DA_LUU_MAU_24H", "CHO_LUU_MAU"],
+          "maxLength": 30
+        },
+        "inspectorName": { "type": "string", "maxLength": 120 },
+        "signatureHash": { "type": "string", "maxLength": 120 }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "date",
+        "dayOfWeek",
+        "lunchMainDish",
+        "lunchSideDish",
+        "lunchSoup",
+        "afternoonSnack",
+        "caloriesKcal",
+        "step1InputCheck",
+        "step2ProcessingCheck",
+        "step3SampleSaved",
+        "inspectorName"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores teacher/admin profile and school general settings"
+    },
+    "/lessons/{lessonId}": {
+      "schema": { "$ref": "#/entities/LessonRecord" },
+      "description": "Stores digital class diary entries owned by user"
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/StudentProfile" },
+      "description": "Stores student roster and attendance owned by user"
+    },
+    "/tt27_records/{recordId}": {
+      "schema": { "$ref": "#/entities/StudentTT27Record" },
+      "description": "Stores TT27 student evaluations owned by user"
+    },
+    "/emulation_scores/{scoreId}": {
+      "schema": { "$ref": "#/entities/EmulationScore" },
+      "description": "Stores weekly class emulation scores owned by user"
+    },
+    "/timetable_slots/{slotId}": {
+      "schema": { "$ref": "#/entities/TimetableSlot" },
+      "description": "Stores timetable slots owned by user"
+    },
+    "/boarding_records/{recordId}": {
+      "schema": { "$ref": "#/entities/BoardingStudentRecord" },
+      "description": "Stores primary school semi-boarding student daily care and meal records owned by user"
+    },
+    "/boarding_menus/{menuId}": {
+      "schema": { "$ref": "#/entities/BoardingMenuRecord" },
+      "description": "Stores daily nutrition menus and 3-step food safety inspection logs owned by user"
+    }
+  }
+}
